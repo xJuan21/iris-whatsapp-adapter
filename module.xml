@@ -3,7 +3,7 @@
   <Document name="iris-whatsapp-adapter.ZPM">
     <Module>
       <Name>iris-whatsapp-adapter</Name>
-      <Version>2.0.11</Version>
+      <Version>2.0.12</Version>
       <Description>WhatsApp Cloud API adapter, Business Operation and Business Service for IRIS Interoperability</Description>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
