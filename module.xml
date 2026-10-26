@@ -8,6 +8,7 @@
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
       <Resource Name="WhatsAppMeta.PKG"/>
+      <Invoke Class="WhatsAppMeta.Util.Setup" Method="OnInstall" Phase="Activate" When="After"/>
 
     </Module>
   </Document>
