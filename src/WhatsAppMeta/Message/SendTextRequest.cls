@@ -3,7 +3,7 @@ Class WhatsAppMeta.Message.SendTextRequest Extends Ens.Request
 {
 
 /// Recipient in international format, digits only (e.g. 15551234567).
-Property To As %String(MAXLEN = 32) [ Required ];
+Property ToRecipient As %String(MAXLEN = 32) [ Required ];
 
 Property Body As %String(MAXLEN = 4096) [ Required ];
 
@@ -14,7 +14,7 @@ Method ToPayload() As %DynamicObject
 	Return {
 		"messaging_product": "whatsapp",
 		"recipient_type": "individual",
-		"to": (..To),
+		"to": (..ToRecipient),
 		"type": "text",
 		"text": {"preview_url": (''..PreviewUrl), "body": (..Body)}
 	}
@@ -25,7 +25,7 @@ Storage Default
 <Data name="SendTextRequestDefaultData">
 <Subscript>"SendTextRequest"</Subscript>
 <Value name="1">
-<Value>To</Value>
+<Value>ToRecipient</Value>
 </Value>
 <Value name="2">
 <Value>Body</Value>

@@ -2,7 +2,7 @@
 Class WhatsAppMeta.Message.SendTemplateRequest Extends Ens.Request
 {
 
-Property To As %String(MAXLEN = 32) [ Required ];
+Property ToRecipient As %String(MAXLEN = 32) [ Required ];
 
 Property TemplateName As %String(MAXLEN = 512) [ Required ];
 
@@ -21,7 +21,7 @@ Method ToPayload() As %DynamicObject
 		}
 		Set Template.components = [{"type": "body", "parameters": (Parameters)}]
 	}
-	Return {"messaging_product": "whatsapp", "to": (..To), "type": "template", "template": (Template)}
+	Return {"messaging_product": "whatsapp", "to": (..ToRecipient), "type": "template", "template": (Template)}
 }
 
 Storage Default
@@ -29,7 +29,7 @@ Storage Default
 <Data name="SendTemplateRequestDefaultData">
 <Subscript>"SendTemplateRequest"</Subscript>
 <Value name="1">
-<Value>To</Value>
+<Value>ToRecipient</Value>
 </Value>
 <Value name="2">
 <Value>TemplateName</Value>

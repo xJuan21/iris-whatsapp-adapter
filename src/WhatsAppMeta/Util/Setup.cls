@@ -18,10 +18,10 @@ ClassMethod SetToken(pToken As %String, pId As %String = "WhatsApp") As %Status
 }
 
 /// Smoke test: send the hello_world template through the running production.
-ClassMethod SendHello(pTo As %String) As %Status
+ClassMethod SendHello(pToRecipient As %String) As %Status
 {
 	Set Request = ##class(WhatsAppMeta.Message.SendTemplateRequest).%New()
-	Set Request.To = pTo, Request.TemplateName = "hello_world"
+	Set Request.ToRecipient = pToRecipient, Request.TemplateName = "hello_world"
 	Set SC = ##class(EnsLib.Testing.Service).SendTestRequest("WhatsAppMeta.Operation.SendMessage", Request, .Response, .SessionId, 1)
 	Write "session ", $Get(SessionId), " messageId ", $Select($IsObject($Get(Response)):Response.MessageId, 1:""), !
 	Return SC
