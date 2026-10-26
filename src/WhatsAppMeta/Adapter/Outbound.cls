@@ -1,6 +1,6 @@
 /// Outbound adapter for the WhatsApp Cloud API (Meta Graph API).
 /// Posts to https://graph.facebook.com/{ApiVersion}/{PhoneNumberId}/messages
-/// with a bearer Token read from Interoperability Credentials (password field).
+/// with a bearer token read from Interoperability Credentials (password field).
 Class WhatsAppMeta.Adapter.Outbound Extends EnsLib.HTTP.OutboundAdapter
 {
 
@@ -12,53 +12,53 @@ Property PhoneNumberId As %String;
 /// Graph API version segment, e.g. v25.0.
 Property ApiVersion As %String [ InitialExpression = "v25.0" ];
 
-/// Credentials entry whose Password holds the Meta access Token.
+/// Credentials entry whose Password holds the Meta access token.
 Property TokenCredentials As %String;
 
 /// Default the inherited HTTP settings to the Graph API when left blank.
 Method OnInit() As %Status
 {
-	set:(..HTTPServer="") ..HTTPServer = "graph.facebook.com"
-	set:(..HTTPPort="") ..HTTPPort = 443
-	set:(..SSLConfig="") ..SSLConfig = "WhatsApp"
-	return ##super()
+	Set:(..HTTPServer="") ..HTTPServer = "graph.facebook.com"
+	Set:(..HTTPPort="") ..HTTPPort = 443
+	Set:(..SSLConfig="") ..SSLConfig = "WhatsApp"
+	Return ##super()
 }
 
 /// POST a message payload. On success pResponse holds the parsed Graph API JSON.
 /// Graph API errors come back as a %Status carrying Meta's error code and message.
 Method SendMessage(pPayload As %DynamicObject, Output pResponse As %DynamicObject) As %Status
 {
-	set SC = $$$OK, pResponse = ""
-	try {
-		set Token = ..GetToken()
-		if Token = "" return $$$ERROR($$$GeneralError, "No access Token: set TokenCredentials to a Credentials entry")
+	Set SC = $$$OK, pResponse = ""
+	Try {
+		Set Token = ..GetToken()
+		If Token = "" Return $$$ERROR($$$GeneralError, "No access token: set TokenCredentials to a Credentials entry")
 
-		set RequestHTTP = ##class(%Net.HttpRequest).%New()
-		set RequestHTTP.ContentType = "application/json"
-		do RequestHTTP.SetHeader("Authorization", "Bearer "_Token)
-		do RequestHTTP.EntityBody.Write(pPayload.%ToJSON())
+		Set RequestHTTP = ##class(%Net.HttpRequest).%New()
+		Set RequestHTTP.ContentType = "application/json"
+		Do RequestHTTP.SetHeader("Authorization", "Bearer "_Token)
+		Do RequestHTTP.EntityBody.Write(pPayload.%ToJSON())
 
-		set url = "/"_..ApiVersion_"/"_..PhoneNumberId_"/messages"
-		set SC = ..SendFormDataArray(.httpResp, "POST", RequestHTTP, , , url)
+		Set URL = "/"_..ApiVersion_"/"_..PhoneNumberId_"/messages"
+		Set SC = ..SendFormDataArray(.ResponseHTTP, "POST", RequestHTTP, , , URL)
 		// SendFormDataArray errors on non-2xx; prefer Meta's error body when present
-		if $isobject($get(httpResp)) && $isobject(httpResp.Data) && (httpResp.Data.Size > 0) {
-			set body = ##class(%DynamicObject).%FromJSON(httpResp.Data)
-			if $isobject(body.error) {
-				return $$$ERROR($$$GeneralError, "WhatsApp API error "_body.error.code_": "_body.error.message)
+		If $IsObject($Get(ResponseHTTP)) && $IsObject(ResponseHTTP.Data) && (ResponseHTTP.Data.Size > 0) {
+			Set Body = ##class(%DynamicObject).%FromJSON(ResponseHTTP.Data)
+			If $IsObject(Body.error) {
+				Return $$$ERROR($$$GeneralError, "WhatsApp API error "_Body.error.code_": "_Body.error.message)
 			}
-			set pResponse = body
+			Set pResponse = Body
 		}
-	} catch ex {
-		set SC = ex.AsStatus()
+	} Catch Ex {
+		Set SC = Ex.AsStatus()
 	}
-	return SC
+	Return SC
 }
 
 Method GetToken() As %String [ Private ]
 {
-	return:(..TokenCredentials="") ""
-	set cred = ##class(Ens.Config.Credentials).%OpenId(..TokenCredentials)
-	return $select($isobject(cred): cred.Password, 1: "")
+	Return:(..TokenCredentials="") ""
+	Set Credential = ##class(Ens.Config.Credentials).%OpenId(..TokenCredentials)
+	Return $Select($IsObject(Credential): Credential.Password, 1: "")
 }
 
 }

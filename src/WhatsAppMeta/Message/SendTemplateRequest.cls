@@ -13,15 +13,15 @@ Property BodyParameters As list Of %String(MAXLEN = 1024);
 
 Method ToPayload() As %DynamicObject
 {
-	set tpl = {"name": (..TemplateName), "language": {"code": (..LanguageCode)}}
-	if ..BodyParameters.Count() {
-		set params = []
-		for i=1:1:..BodyParameters.Count() {
-			do params.%Push({"type": "text", "text": (..BodyParameters.GetAt(i))})
+	Set Template = {"name": (..TemplateName), "language": {"code": (..LanguageCode)}}
+	If ..BodyParameters.Count() {
+		Set Parameters = []
+		For Index=1:1:..BodyParameters.Count() {
+			Do Parameters.%Push({"type": "text", "text": (..BodyParameters.GetAt(Index))})
 		}
-		set tpl.components = [{"type": "body", "parameters": (params)}]
+		Set Template.components = [{"type": "body", "parameters": (Parameters)}]
 	}
-	return {"messaging_product": "whatsapp", "to": (..To), "type": "template", "template": (tpl)}
+	Return {"messaging_product": "whatsapp", "to": (..To), "type": "template", "template": (Template)}
 }
 
 Storage Default

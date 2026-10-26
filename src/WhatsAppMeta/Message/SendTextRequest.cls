@@ -11,7 +11,7 @@ Property PreviewUrl As %Boolean [ InitialExpression = 0 ];
 
 Method ToPayload() As %DynamicObject
 {
-	return {
+	Return {
 		"messaging_product": "whatsapp",
 		"recipient_type": "individual",
 		"to": (..To),

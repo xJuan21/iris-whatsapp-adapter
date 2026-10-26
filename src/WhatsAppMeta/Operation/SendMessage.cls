@@ -10,24 +10,24 @@ Property Adapter As WhatsAppMeta.Adapter.Outbound;
 
 Method SendText(pRequest As WhatsAppMeta.Message.SendTextRequest, Output pResponse As WhatsAppMeta.Message.SendResponse) As %Status
 {
-	return ..Send(pRequest.ToPayload(), .pResponse)
+	Return ..Send(pRequest.ToPayload(), .pResponse)
 }
 
 Method SendTemplate(pRequest As WhatsAppMeta.Message.SendTemplateRequest, Output pResponse As WhatsAppMeta.Message.SendResponse) As %Status
 {
-	return ..Send(pRequest.ToPayload(), .pResponse)
+	Return ..Send(pRequest.ToPayload(), .pResponse)
 }
 
 Method Send(pPayload As %DynamicObject, Output pResponse As WhatsAppMeta.Message.SendResponse) As %Status [ Private ]
 {
-	set sc = ..Adapter.SendMessage(pPayload, .json)
-	return:$$$ISERR(sc) sc
-	set pResponse = ##class(WhatsAppMeta.Message.SendResponse).%New()
-	if $isobject(json) {
-		set:$isobject(json.messages) pResponse.MessageId = json.messages.%Get(0).id
-		set:$isobject(json.contacts) pResponse.WaId = json.contacts.%Get(0)."wa_id"
+	Set SC = ..Adapter.SendMessage(pPayload, .JSON)
+	Return:($$$ISERR(SC)) SC
+	Set pResponse = ##class(WhatsAppMeta.Message.SendResponse).%New()
+	If $IsObject(JSON) {
+		Set:($IsObject(JSON.messages)) pResponse.MessageId = JSON.messages.%Get(0).id
+		Set:($IsObject(JSON.contacts)) pResponse.WaId = JSON.contacts.%Get(0)."wa_id"
 	}
-	return $$$OK
+	Return $$$OK
 }
 
 XData MessageMap
