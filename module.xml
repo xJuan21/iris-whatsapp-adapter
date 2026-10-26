@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Export generator="Cache" version="25">
-  <Document name="dc-sample.ZPM">
+  <Document name="iris-whatsapp-adapter.ZPM">
     <Module>
-      <Name>dc-sample</Name>
+      <Name>iris-whatsapp-adapter</Name>
       <Version>2.0.11</Version>
-      <Description>Basic InterSystems IRIS Development Template</Description>
+      <Description>WhatsApp Cloud API adapter, Business Operation and Business Service for IRIS Interoperability</Description>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
-      <Resource Name="dc.sample.PKG"/>
-      <UnitTest Name="/tests" Package="dc.sample.unittests" Phase="test"/>
+      <Resource Name="WhatsAppMeta.PKG"/>
 
     </Module>
   </Document>
