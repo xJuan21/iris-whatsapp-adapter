@@ -11,12 +11,15 @@ Property PreviewUrl As %Boolean [ InitialExpression = 0 ];
 
 Method ToPayload() As %DynamicObject
 {
+	Set Text = {"body": (..Body)}
+	// Meta expects a JSON boolean; (''..PreviewUrl) would serialize as the number 0/1
+	Do Text.%Set("preview_url", ''..PreviewUrl, "boolean")
 	Return {
 		"messaging_product": "whatsapp",
 		"recipient_type": "individual",
 		"to": (..ToRecipient),
 		"type": "text",
-		"text": {"preview_url": (''..PreviewUrl), "body": (..Body)}
+		"text": (Text)
 	}
 }
 

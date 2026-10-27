@@ -9,8 +9,8 @@ Parameter SETTINGS = "PhoneNumberId:WhatsApp,ApiVersion:WhatsApp,TokenCredential
 /// Phone number ID from the Meta app dashboard (not the phone number itself).
 Property PhoneNumberId As %String;
 
-/// Graph API version segment, e.g. v25.0.
-Property ApiVersion As %String [ InitialExpression = "v25.0" ];
+/// Graph API version segment, e.g. v26.0.
+Property ApiVersion As %String [ InitialExpression = "v26.0" ];
 
 /// Credentials entry whose Password holds the Meta access token.
 Property TokenCredentials As %String;

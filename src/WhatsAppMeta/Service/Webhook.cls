@@ -14,7 +14,7 @@ Property Adapter As WhatsAppMeta.Adapter.Inbound;
 Property TargetConfigNames As %String(MAXLEN = 1000);
 
 /// pInput is Meta's webhook payload as a %DynamicObject: entry[].changes[].value.messages[].
-/// Delivery status updates (value.statuses[]) are ignored for now.
+/// Delivery status updates (value.statuses[]) are not forwarded; failed ones are logged as warnings.
 Method OnProcessInput(pInput As %RegisteredObject, Output pOutput As %RegisteredObject, ByRef pHint As %String) As %Status
 {
 	Set SC = $$$OK
@@ -25,7 +25,9 @@ Method OnProcessInput(pInput As %RegisteredObject, Output pOutput As %Registered
 		Set ChangeIterator = Entry.changes.%GetIterator()
 		While ChangeIterator.%GetNext(.ChangeKey, .Change) {
 			Set Value = Change.value
-			Continue:(('$IsObject(Value)) || ('$IsObject(Value.messages)))
+			Continue:('$IsObject(Value))
+			Do:($IsObject(Value.statuses)) ..LogFailedStatuses(Value.statuses)
+			Continue:('$IsObject(Value.messages))
 			Set ContactName = ""
 			If ($IsObject(Value.contacts) && $IsObject(Value.contacts.%Get(0))) {
 				Set ContactName = Value.contacts.%Get(0).profile.name
@@ -38,6 +40,21 @@ Method OnProcessInput(pInput As %RegisteredObject, Output pOutput As %Registered
 		}
 	}
 	Return SC
+}
+
+/// Meta reports some send failures only here, after the send call itself succeeded
+/// (e.g. 131047: free-form text outside the 24h window). Log them so they are not silent.
+Method LogFailedStatuses(pStatuses As %DynamicArray) [ Private ]
+{
+	Set StatusIterator = pStatuses.%GetIterator()
+	While StatusIterator.%GetNext(.StatusKey, .Status) {
+		Continue:(Status.status '= "failed")
+		Set Detail = ""
+		If ($IsObject(Status.errors) && $IsObject(Status.errors.%Get(0))) {
+			Set Detail = " error "_Status.errors.%Get(0).code_": "_Status.errors.%Get(0).title
+		}
+		$$$LOGWARNING("WhatsApp delivery failed for message "_Status.id_" to "_Status."recipient_id"_Detail)
+	}
 }
 
 Method ToInbound(pMessage As %DynamicObject, pContactName As %String) As WhatsAppMeta.Message.Inbound [ Private ]
