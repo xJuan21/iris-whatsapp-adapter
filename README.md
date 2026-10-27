@@ -1,234 +1,193 @@
- [![Gitter](https://img.shields.io/badge/Available%20on-Intersystems%20Open%20Exchange-00b2a9.svg)](https://openexchange.intersystems.com/package/intersystems-iris-dev-template)
- [![Quality Gate Status](https://community.objectscriptquality.com/api/project_badges/measure?project=intersystems_iris_community%2Fintersystems-iris-dev-template&metric=alert_status)](https://community.objectscriptquality.com/dashboard?id=intersystems_iris_community%2Fintersystems-iris-dev-template)
- [![Reliability Rating](https://community.objectscriptquality.com/api/project_badges/measure?project=intersystems_iris_community%2Fintersystems-iris-dev-template&metric=reliability_rating)](https://community.objectscriptquality.com/dashboard?id=intersystems_iris_community%2Fintersystems-iris-dev-template)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat&logo=AdGuard)](LICENSE)
-# intersystems-iris-dev-template
-This is a basic template for a development environment to work with ObjectScript in InterSystems IRIS. It helps you edit, compile, commit/push, debug and test your ObjectScript code. It also aids in packaging your application as a module installable with IPM.
-The template is embedded python compatible.
+# iris-whatsapp-adapter
 
-## Description
-This repository provides a ready-to-go development environment for coding productively with InterSystems ObjectScript. This template:
-* Runs InterSystems IRIS Community Edition in a docker container
-* Creates a new namespace and database IRISAPP
-* Loads the ObjectScript code into IRISAPP database using Package Manager
-* Promotes development with the 'Package First' paradigm. [Watch the video](https://www.youtube.com/watch?v=havPyPbUj1I)
-* Provides a unit testing environment: sample unit tests, tests module enablement
-* Ready for embedded python development: ENV varialbes are set up, CallIn service is On, all modules in requirements.txt will be installed during docker build.
+Send and receive WhatsApp messages from InterSystems IRIS Interoperability productions,
+through Meta's official **WhatsApp Cloud API**.
 
-## Usage
-Start a new dev repository with InterSystems IRIS using this one as a template.
-Once you clone the new repo to your laptop and open VSCode (with the [InterSystems ObjectScript Extension Pack](https://marketplace.visualstudio.com/items?itemName=intersystems-community.objectscript-pack) installed) you'll be able to start development immediately.
+It provides an **outbound adapter and Business Operation** to send messages, and an
+**inbound adapter and Business Service** to receive them through Meta's webhook, plus a
+small demo production that echoes back whatever you send it.
 
-## Prerequisites
-Make sure you have [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) and [Docker desktop](https://www.docker.com/products/docker-desktop) installed.
+Implements the InterSystems idea
+[DPI-I-882 — Introduce a WhatsApp adapter for IRIS Interoperability](https://ideas.intersystems.com/ideas/DPI-I-882).
 
-## Installation
-
-Clone/git pull the repo into any local directory
+## How it works
 
 ```
-$ git clone https://github.com/intersystems-community/intersystems-iris-dev-template.git
+Your production ──▶ Operation.SendMessage ──▶ Adapter.Outbound ──▶ Meta Cloud API ──▶ phone
+                                                                                        │
+phone ──▶ Meta webhook ──▶ HTTPS ──▶ /whatsapp (API.Webhook) ──▶ Service.Webhook ──▶ your targets
+                                     checks X-Hub-Signature-256
 ```
 
-Open the terminal in this directory and call the command to build and run InterSystems IRIS in container:
-*Note: Users running containers on a Linux CLI, should use "docker compose" instead of "docker-compose"*
-*See [Install the Compose plugin](https://docs.docker.com/compose/install/linux/)*
+- **Outbound**: send a `SendTextRequest` or `SendTemplateRequest` to the operation; you get
+  back a `SendResponse` with Meta's message ID.
+- **Inbound**: Meta posts each message to the `/whatsapp/webhook` endpoint. Requests without
+  a valid signature from your Meta App Secret are rejected with `403`. Valid messages become
+  `Message.Inbound` requests sent to the targets you choose.
 
+## Requirements
 
+- InterSystems IRIS or IRIS for Health with Interoperability, 2024.1 or later
+  (tested on IRIS Community 2026.1)
+- IPM (ZPM) package manager
+- A Meta developer app with the WhatsApp use case and a phone number (Meta's free test
+  number works). See **[META-SETUP.md](META-SETUP.md)** for the Meta side, step by step.
+- Inbound only: a public HTTPS URL that reaches your IRIS web server (a reverse proxy or a
+  tunnel such as Tailscale Funnel)
 
-```
-$ docker-compose up -d
-```
+## Install
 
-To open IRIS Terminal do:
+In an Interoperability-enabled namespace:
 
-```
-$ docker-compose exec iris iris session iris -U IRISAPP
-IRISAPP>
-```
-
-To exit the terminal, do any of the following:
-
-```
-Enter HALT or H (not case-sensitive)
-```
-
-## What does it do
-THe sample repository contains two simplest examples of ObjectScript classes: ObjectScript method that returns value and method that creates a persistent record.
-
-1. Open IRIS terminal and run the ObjectScript Test() method to see if runs the script and returns values from IRIS:
-
-```
-$ docker-compose exec iris iris session iris -U IRISAPP
-IRISAPP>write ##class(dc.sample.ObjectScript).Test()
-It works!
-42
+```objectscript
+zpm "install iris-whatsapp-adapter"
 ```
 
+Or from a clone of this repository:
 
-
-2. Class `dc.sample.PersistentClass` contains a method `CreateRecord` that creates an object with one property, `Test`, and returns its id.
-
-Open IRIS terminal and run:
-
-```
-IRISAPP>write ##class(dc.sample.PersistentClass).CreateRecord(.id)
-1
-IRISAPP>write id
-1
+```objectscript
+zpm "load /path/to/iris-whatsapp-adapter"
 ```
 
-In your case the value of id could be different. And it will be different with every call of the method.
+Installing creates only the outbound SSL configuration (`WhatsApp`) and prints the next
+steps. It **never** creates the public webhook endpoint by itself (see step 4 below).
 
-You can check whether the record exists and try to right the property of the object by its id.
+## Configure
 
-```
-IRISAPP>write ##class(dc.sample.PersistentClass).ReadProperty(id)
-Test string
-```
+Run these in the namespace where you installed the package. Each command prints nothing
+on success; secrets are stored as Interoperability Credentials, never in code.
 
-## How to start the development
+**1. Access token** (from Meta, see [META-SETUP.md](META-SETUP.md))
 
-This repository is ready to code in VSCode with the ObjectScript plugin.
-
-Install [VSCode](https://code.visualstudio.com/), [Docker](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker) and the [InterSystems ObjectScript Extension Pack](https://marketplace.visualstudio.com/items?itemName=intersystems-community.objectscript-pack) plugin and open the folder in VSCode.
-
-Open the `/src/cls/PackageSample/ObjectScript.cls` class and make changes - it will be compiled in the running IRIS docker container.
-
-![docker_compose](https://user-images.githubusercontent.com/2781759/76656929-0f2e5700-6547-11ea-9cc9-486a5641c51d.gif)
-
-Feel free to delete the PackageSample folder and place your ObjectScript classes in the form
-`/src/organisation/package/Classname.cls`
-
-[Read more about folder setup for InterSystems ObjectScript](https://community.intersystems.com/post/simplified-objectscript-source-folder-structure-package-manager) and here on the [naming convention](https://community.intersystems.com/post/naming-convention-objectscript-packages-classes-and-package-manager-modules-names)
-
-## Running unit tests
-
-The template contains two test classes: `TestObjectScript.cls` and `TestPersistentClass.cls `
-
-To run the unit tests we can use the Package Manager environment.
-
-```
-IRISAPP>zpm
-
-=============================================================================
-|| Welcome to the Package Manager Shell (ZPM).                             ||
-|| Enter q/quit to exit the shell. Enter ?/help to view available commands ||
-=============================================================================
-zpm:IRISAPP>load /home/irisowner/dev
-
-[IRISAPP|dc-sample]     Reload START (/home/irisowner/dev/)
-[IRISAPP|dc-sample]     requirements.txt START
-[IRISAPP|dc-sample]     requirements.txt SUCCESS
-[IRISAPP|dc-sample]     Reload SUCCESS
-[dc-sample]     Module object refreshed.
-[IRISAPP|dc-sample]     Validate START
-[IRISAPP|dc-sample]     Validate SUCCESS
-[IRISAPP|dc-sample]     Compile START
-[IRISAPP|dc-sample]     Compile SUCCESS
-[IRISAPP|dc-sample]     Activate START
-[IRISAPP|dc-sample]     Configure START
-[IRISAPP|dc-sample]     Configure SUCCESS
-[IRISAPP|dc-sample]     Activate SUCCESS
-zpm:IRISAPP>test dc-sample
-
-[IRISAPP|dc-sample]     Reload START (/home/irisowner/dev/)
-[IRISAPP|dc-sample]     Reload SUCCESS
-[dc-sample]     Module object refreshed.
-[IRISAPP|dc-sample]     Validate START
-[IRISAPP|dc-sample]     Validate SUCCESS
-[IRISAPP|dc-sample]     Compile START
-[IRISAPP|dc-sample]     Compile SUCCESS
-[IRISAPP|dc-sample]     Activate START
-[IRISAPP|dc-sample]     Configure START
-[IRISAPP|dc-sample]     Configure SUCCESS
-[IRISAPP|dc-sample]     Activate SUCCESS
-[IRISAPP|dc-sample]     Test STARTHello World!
-This is InterSystems IRIS with version IRIS for UNIX (Ubuntu Server LTS for ARM64 Containers) 2023.2 (Build 221U) Fri Jul 21 2023 15:12:42 EDT
-Current time is: 16 Aug 2023 14:32:10
-Use the following URL to view the result:
-http://172.31.0.2:52773/csp/sys/%25UnitTest.Portal.Indices.cls?Index=2&$NAMESPACE=IRISAPP
-All PASSED
-
-[IRISAPP|dc-sample]     Test SUCCESS
-zpm:IRISAPP>
+```objectscript
+Write $System.Status.GetErrorText(##class(WhatsAppMeta.Util.Setup).SetToken("<access token>"))
 ```
 
-In case of test errors, you can find more details back in the UnitTest portal, which can be easily opened via ObjectScript menu in VSCode:
+**2. Phone Number ID**: add a **System Default Setting** (Interoperability → Configure →
+System Default Settings → New) so it survives recompiling the production:
 
-![vscvode unittest](https://user-images.githubusercontent.com/2781759/152678943-7d9d9696-e26a-449f-b1d7-f924528c8e3a.png)
+| Field | Value |
+|---|---|
+| Production Name | `WhatsAppMeta.Production.Demo` (or your production) |
+| Item Name / Host Class Name | `WhatsAppMeta.Operation.SendMessage` |
+| Setting Name | `PhoneNumberId` |
+| Setting Value | your Phone Number ID (not the phone number itself) |
 
-If you have installed the [_InterSystems Testing Manager for VS Code_ extension](https://openexchange.intersystems.com/package/InterSystems-Testing-Manager-for-VS-Code)
-you can also run unit tests directly from VSCode :
-![vscvode unittest](https://raw.githubusercontent.com/intersystems-community/intersystems-testingmanager/main/images/README/Overview-Client.gif)
+**3. Try sending.** Start `WhatsAppMeta.Production.Demo`, then:
 
-## What else is inside the repository
+```objectscript
+Do ##class(WhatsAppMeta.Util.Setup).SendHello("<your number, digits only>")
+```
 
-### .github folder
+You should receive Meta's `hello_world` template. Sending works now; steps 4–6 are only
+needed to **receive** messages.
 
-Contains two GitHub actions workflows:
-1. `github-registry.yml`
-    Once changes pushed to the repo, the action builds the docker image on Github side and pushes the image to Github registry that can be very convenient to further cloud deployement, e.g. kubernetes.
-2. `objectscript-qaulity.yml`
-    with every push to master or main branch the workflow launches the repo test on objectscript issues with Objectscript Quality tool, [see the examples](https://community.objectscriptquality.com/projects?sort=-analysis_date). This works if the repo is open-source only.
+**4. Webhook secrets**: a verify token you invent, and your Meta App Secret:
 
-Both workflows are repo agnostic: so they work with any repository where they exist.
+```objectscript
+Write $System.Status.GetErrorText(##class(WhatsAppMeta.Util.Setup).SetSecrets("<verify token>","<App Secret>"))
+```
 
-### .vscode folder
-Contains two files to setup vscode environment:
+**5. Create the webhook endpoint.** This creates an **unauthenticated** web application,
+so it shows you exactly what it will change and asks before doing anything:
 
-#### .vscode/settings.json
+```objectscript
+Write $System.Status.GetErrorText(##class(WhatsAppMeta.Util.Setup).CreateWebApp())
+```
 
-Settings file to let you immediately code in VSCode with [VSCode ObjectScript plugin](https://marketplace.visualstudio.com/items?itemName=daimor.vscode-objectscript))
+It creates the web application `/whatsapp` and a role, `WhatsAppWebhook`, whose resources
+are looked up from your namespace's own databases. Answer `y` to apply. To undo it, run
+`RemoveWebApp()`.
 
-#### .vscode/launch.json
+**6. Connect Meta to the endpoint**: register the webhook URL in Meta, then subscribe your
+app to your WhatsApp Business Account:
 
-Config file if you want to debug with VSCode ObjectScript
+```objectscript
+Write $System.Status.GetErrorText(##class(WhatsAppMeta.Util.Setup).SubscribeApp("<WhatsApp Business Account ID>"))
+```
 
-### src folder
+Without this last step, Meta's dashboard **Test** button works but real messages never
+arrive. [META-SETUP.md](META-SETUP.md) explains why.
 
-Contains source files.
-src/iris contains InterSystems IRIS Objectscript code
+**Done.** Message the number from your phone: the demo production replies `Echo: <your text>`.
 
-### tests folder
-Contains unit tests for the ObjectScript classes
+## Use it in your own production
 
-### dev.md
+**Send**: add `WhatsAppMeta.Operation.SendMessage` to your production and send it either
+request:
 
-Contains a set of useful commands that will help during the development
+```objectscript
+Set Request = ##class(WhatsAppMeta.Message.SendTextRequest).%New()
+Set Request.ToRecipient = "15551234567", Request.Body = "Your order has shipped"
+```
 
-### docker-compose.yml
+| Request | Use for |
+|---|---|
+| `Message.SendTextRequest` | Free-form text. Only allowed within **24 hours** of the user's last message to you |
+| `Message.SendTemplateRequest` | Pre-approved templates (`TemplateName`, `LanguageCode`, `BodyParameters`). Can start a conversation at any time |
 
-A docker engine helper file to manage images building and rule ports mapping an the host to container folders(volumes) mapping
+**Receive**: add `WhatsAppMeta.Service.Webhook` with **Pool Size 0** (web requests drive it),
+set its adapter's `VerifyTokenCredentials` / `AppSecretCredentials`, and point
+`TargetConfigNames` at your process. It sends one `Message.Inbound` per message
+(`FromSender`, `ContactName`, `MessageType`, `Body`, `MessageId`, `SentAt`).
 
-### Dockerfile
+## Classes
 
-The simplest dockerfile which starts IRIS and imports code from /src folder into it.
-Use the related docker-compose.yml to easily setup additional parametes like port number and where you map keys and host folders.
+| Class | Role |
+|---|---|
+| `WhatsAppMeta.Adapter.Outbound` | Calls the Graph API; settings `PhoneNumberId`, `ApiVersion` (default `v26.0`), `TokenCredentials` |
+| `WhatsAppMeta.Operation.SendMessage` | Business Operation for the two send requests |
+| `WhatsAppMeta.Adapter.Inbound` | Verifies the webhook handshake token and `X-Hub-Signature-256` |
+| `WhatsAppMeta.API.Webhook` | REST endpoint Meta calls (`GET`/`POST /webhook`) |
+| `WhatsAppMeta.Service.Webhook` | Business Service: one `Message.Inbound` per received message; logs failed delivery statuses as warnings |
+| `WhatsAppMeta.Process.Echo` | Demo process: replies "Echo: …" |
+| `WhatsAppMeta.Production.Demo` | Demo production: webhook → Echo → SendMessage |
+| `WhatsAppMeta.Util.Setup` | `SetToken`, `SetSecrets`, `CreateWebApp`, `RemoveWebApp`, `SubscribeApp`, `ListSubscribedApps`, `SendHello` |
 
+## Security
 
-### iris.script
+- **Only the webhook should be public.** Expose `/whatsapp` alone, never the whole web
+  server; the Management Portal must not be reachable from the internet.
+- **Every POST must be signed** by Meta with your App Secret; anything else gets `403`
+  before reaching your production. The handshake (`GET`) needs your verify token.
+- **The endpoint is unauthenticated** because Meta can't log in. It runs with the
+  `WhatsAppWebhook` role only. That role needs read access to the database holding
+  credential passwords and to `%Ens_Credentials`, so code running under `/whatsapp` could
+  read every credential in the namespace. Only this package's dispatch class runs there.
+- If a granted resource also protects other databases, `CreateWebApp()` warns you before
+  you agree.
+- Secrets live in Interoperability Credentials. Never put them in code, files, or settings.
 
-Contains objectscript commands that are feeded to iris during the image building
+## Tests
 
-### module.xml
+Offline unit tests cover the signature and verify-token checks and the outbound payloads:
 
-IPM Module's description of the code in the repository.
-It describes what is loaded with the method, how it is being tested and what apps neeed to be created, what files need to be copied.
+```objectscript
+zpm "test iris-whatsapp-adapter"
+```
 
-[Read about all the files in this artilce](https://community.intersystems.com/post/dockerfile-and-friends-or-how-run-and-collaborate-objectscript-projects-intersystems-iris)
+To run them from VS Code's Testing panel instead, set the test root once per namespace:
 
-
+```objectscript
+Set Dir = "/durable/irissys/unittestroot/" Write ##class(%File).CreateDirectoryChain(Dir) Set ^UnitTestRoot = Dir
+```
 
 ## Troubleshooting
 
-If you have issues with docker image building here are some recipes that could help.
+| Symptom | Cause |
+|---|---|
+| `WhatsApp API error 190` | Access token expired (temporary tokens last 1–2 hours). Store a new one with `SetToken` |
+| `WhatsApp API error 100 … Object with ID 'messages'` | `PhoneNumberId` is empty. Set it as a System Default Setting |
+| `131030 Recipient phone number not in allowed list` | On the test number, add the recipient in Meta's API Setup |
+| Echo accepted but never delivered; warning `131047` | Free-form text outside the 24-hour window. Message the number first, or use a template |
+| Dashboard Test reaches IRIS, real messages don't | App not published, or app not subscribed to the WABA (`SubscribeApp`) |
+| `403` on every webhook call, nothing in the logs | The web app's role can't read the namespace's databases; re-run `CreateWebApp()` |
+| `503` from the webhook | The production isn't running |
 
-1. You are out of free space in docker. You can expand the amount of space or clean up maually via docker desktop. Or you can call the following line to clean up:
-```
-docker system prune -f
-```
+## License and policies
 
-2. We use multi-stage image building which in some cases doesn't work. Switch the target to [builder](https://github.com/intersystems-community/intersystems-iris-dev-template/blob/6ab6791983e5783118efce1777a7671046652e4c/docker-compose.yml#L7) from final in the docker compose and try again.
+[MIT](LICENSE) · [Privacy policy](PRIVACY.md) · [Terms](TERMS.md)
 
+Not affiliated with Meta, WhatsApp, or InterSystems.

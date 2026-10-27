@@ -39,7 +39,8 @@ ClassMethod OnInstall() As %Status
 	Write !, "iris-whatsapp-adapter installed in namespace ", $Namespace, ". Next steps:", !
 	Write "  1. do ##class(WhatsAppMeta.Util.Setup).SetToken(""<Meta access token>"")", !
 	Write "  2. System Default Setting PhoneNumberId on WhatsAppMeta.Operation.SendMessage", !
-	Write "  3. Inbound only: SetSecrets(""<verify token>"",""<App Secret>""), then CreateWebApp()", !
+	Write "  3. Inbound only: SetSecrets(""<verify token>"",""<App Secret>""), CreateWebApp(),", !
+	Write "     then SubscribeApp(""<WhatsApp Business Account ID>"")", !
 	Write "See the README for details.", !
 	Return $$$OK
 }
@@ -201,6 +202,57 @@ ClassMethod DatabaseName(pDirectory As %String) As %String [ Private ]
 		Return:(##class(%File).NormalizeDirectory(Properties("Directory")) = ##class(%File).NormalizeDirectory(pDirectory)) Name
 	}
 	Return ""
+}
+
+/// Subscribe this app to your WhatsApp Business Account (WABA), so the WABA sends its
+/// messages to this app's webhook. Configuring the webhook alone is not enough: it says
+/// where the app's events go, while this says which WABA sends events to the app.
+/// Meta's onboarding usually does this; on the test-number path you must do it yourself.
+/// pWABAId is shown in Meta's API Setup page (Step 1, Try it out). The token is read
+/// from the Interoperability credential, never printed. Lists the subscribed apps after.
+ClassMethod SubscribeApp(pWABAId As %String, pCredentialsId As %String = "WhatsApp", pApiVersion As %String = "v26.0") As %Status
+{
+	Set SC = ..GraphRequest("POST", "/"_pApiVersion_"/"_pWABAId_"/subscribed_apps", pCredentialsId, .Response)
+	Return:($$$ISERR(SC)) SC
+	Return:('Response.success) $$$ERROR($$$GeneralError, "Meta did not confirm the subscription: "_Response.%ToJSON())
+	Write "Subscribed. Apps now receiving events from WABA ", pWABAId, ":", !
+	Return ..ListSubscribedApps(pWABAId, pCredentialsId, pApiVersion)
+}
+
+/// Print the apps subscribed to a WhatsApp Business Account. Meta's own
+/// "WA DevX Webhook Events 1P App" may appear too: it powers the dashboard Test buttons.
+ClassMethod ListSubscribedApps(pWABAId As %String, pCredentialsId As %String = "WhatsApp", pApiVersion As %String = "v26.0") As %Status
+{
+	Set SC = ..GraphRequest("GET", "/"_pApiVersion_"/"_pWABAId_"/subscribed_apps", pCredentialsId, .Response)
+	Return:($$$ISERR(SC)) SC
+	Set AppIterator = Response.data.%GetIterator()
+	While AppIterator.%GetNext(.AppKey, .App) {
+		Set AppData = App."whatsapp_business_api_data"
+		Write "  ", AppData.name, " (app ID ", AppData.id, ")", !
+	}
+	Return $$$OK
+}
+
+/// Call the Graph API with the token from an Interoperability credential.
+ClassMethod GraphRequest(pMethod As %String, pPath As %String, pCredentialsId As %String, Output pResponse As %DynamicObject) As %Status [ Private ]
+{
+	Set pResponse = ""
+	Try {
+		Set Credential = ##class(Ens.Config.Credentials).%OpenId(pCredentialsId)
+		Return:('$IsObject(Credential)) $$$ERROR($$$GeneralError, "Credentials entry '"_pCredentialsId_"' not found; run SetToken first")
+		Set RequestHTTP = ##class(%Net.HttpRequest).%New()
+		Set RequestHTTP.Server = "graph.facebook.com", RequestHTTP.Https = 1, RequestHTTP.SSLConfiguration = "WhatsApp"
+		Do RequestHTTP.SetHeader("Authorization", "Bearer "_Credential.Password)
+		Set SC = RequestHTTP.Send(pMethod, pPath)
+		Return:($$$ISERR(SC)) SC
+		Set pResponse = ##class(%DynamicObject).%FromJSON(RequestHTTP.HttpResponse.Data)
+		If $IsObject(pResponse.error) {
+			Return $$$ERROR($$$GeneralError, "WhatsApp API error "_pResponse.error.code_": "_pResponse.error.message)
+		}
+	} Catch Ex {
+		Return Ex.AsStatus()
+	}
+	Return $$$OK
 }
 
 /// Smoke test: send the hello_world template through the running production.
