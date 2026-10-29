@@ -1,6 +1,6 @@
 /// Demo production: inbound webhook -> Echo -> SendMessage.
 /// Before starting: set PhoneNumberId on WhatsAppMeta.Operation.SendMessage and run
-/// WhatsAppMeta.Util.Setup (SSL config, SetToken, SetSecrets, CreateWebApp).
+/// WhatsAppMeta.Util.Setup (SSL config, SetAccessToken, SetSecrets, CreateWebApp, SubscribeApp).
 Class WhatsAppMeta.Production.Demo Extends Ens.Production
 {
 

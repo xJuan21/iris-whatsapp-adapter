@@ -52,18 +52,23 @@ zpm "load /path/to/iris-whatsapp-adapter"
 ```
 
 Installing creates only the outbound SSL configuration (`WhatsApp`) and prints the next
-steps. It **never** creates the public webhook endpoint by itself (see step 4 below).
+steps. It **never** creates the public webhook endpoint by itself (see step 5 below).
 
 ## Configure
 
 Run these in the namespace where you installed the package. Each command prints nothing
 on success; secrets are stored as Interoperability Credentials, never in code.
 
-**1. Access token** (from Meta, see [META-SETUP.md](META-SETUP.md))
+**1. Access token**: the long token from Meta that starts with `EA`
+(see [META-SETUP.md](META-SETUP.md)):
 
 ```objectscript
-Write $System.Status.GetErrorText(##class(WhatsAppMeta.Util.Setup).SetToken("<access token>"))
+Write $System.Status.GetErrorText(##class(WhatsAppMeta.Util.Setup).SetAccessToken("<access token>"))
 ```
+
+> **Tip:** the token shown on Meta's API Setup page works, but expires after 1–2 hours.
+> For anything longer than a quick try, extend it or use a System User token
+> ([META-SETUP.md](META-SETUP.md), step 3).
 
 **2. Phone Number ID**: add a **System Default Setting** (Interoperability → Configure →
 System Default Settings → New) so it survives recompiling the production:
@@ -71,9 +76,11 @@ System Default Settings → New) so it survives recompiling the production:
 | Field | Value |
 |---|---|
 | Production Name | `WhatsAppMeta.Production.Demo` (or your production) |
-| Item Name / Host Class Name | `WhatsAppMeta.Operation.SendMessage` |
+| Item Name | `WhatsAppMeta.Operation.SendMessage` |
+| Host Class Name | `WhatsAppMeta.Operation.SendMessage` |
 | Setting Name | `PhoneNumberId` |
 | Setting Value | your Phone Number ID (not the phone number itself) |
+| Deployable | leave unticked |
 
 **3. Try sending.** Start `WhatsAppMeta.Production.Demo`, then:
 
@@ -84,7 +91,8 @@ Do ##class(WhatsAppMeta.Util.Setup).SendHello("<your number, digits only>")
 You should receive Meta's `hello_world` template. Sending works now; steps 4–6 are only
 needed to **receive** messages.
 
-**4. Webhook secrets**: a verify token you invent, and your Meta App Secret:
+**4. Webhook secrets**: a verify token you invent, and your Meta App Secret. Neither is
+the access token from step 1:
 
 ```objectscript
 Write $System.Status.GetErrorText(##class(WhatsAppMeta.Util.Setup).SetSecrets("<verify token>","<App Secret>"))
@@ -144,7 +152,7 @@ set its adapter's `VerifyTokenCredentials` / `AppSecretCredentials`, and point
 | `WhatsAppMeta.Service.Webhook` | Business Service: one `Message.Inbound` per received message; logs failed delivery statuses as warnings |
 | `WhatsAppMeta.Process.Echo` | Demo process: replies "Echo: …" |
 | `WhatsAppMeta.Production.Demo` | Demo production: webhook → Echo → SendMessage |
-| `WhatsAppMeta.Util.Setup` | `SetToken`, `SetSecrets`, `CreateWebApp`, `RemoveWebApp`, `SubscribeApp`, `ListSubscribedApps`, `SendHello` |
+| `WhatsAppMeta.Util.Setup` | `SetAccessToken`, `SetSecrets`, `CreateWebApp`, `RemoveWebApp`, `SubscribeApp`, `ListSubscribedApps`, `SendHello` |
 
 ## Security
 
@@ -178,7 +186,7 @@ Set Dir = "/durable/irissys/unittestroot/" Write ##class(%File).CreateDirectoryC
 
 | Symptom | Cause |
 |---|---|
-| `WhatsApp API error 190` | Access token expired (temporary tokens last 1–2 hours). Store a new one with `SetToken` |
+| `WhatsApp API error 190` | The access token is expired or wrong. Store the right one with `SetAccessToken`. Common mix-ups: the short-lived API Setup token, or the App Secret instead of the access token |
 | `WhatsApp API error 100 … Object with ID 'messages'` | `PhoneNumberId` is empty. Set it as a System Default Setting |
 | `131030 Recipient phone number not in allowed list` | On the test number, add the recipient in Meta's API Setup |
 | Echo accepted but never delivered; warning `131047` | Free-form text outside the 24-hour window. Message the number first, or use a template |

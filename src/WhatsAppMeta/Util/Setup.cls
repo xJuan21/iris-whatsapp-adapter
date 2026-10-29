@@ -1,4 +1,4 @@
-/// One-time setup helpers. The token is passed in at the terminal, never stored in source.
+/// One-time setup helpers. Secrets are passed in at the terminal, never stored in source.
 Class WhatsAppMeta.Util.Setup
 {
 
@@ -11,15 +11,20 @@ ClassMethod CreateSSLConfig(pName As %String = "WhatsApp") As %Status
 	Return ##class(Security.SSLConfigs).Create(pName)
 }
 
-/// Store the Meta access token as an Interoperability credential. Run in the production namespace.
-ClassMethod SetToken(pToken As %String, pId As %String = "WhatsApp") As %Status
+/// Store the Meta access token (a long string starting with "EA") as an Interoperability
+/// credential, used for every send. Use the extended or System User token, not the
+/// short-lived one shown on Meta's API Setup page. Not the App Secret: that goes in SetSecrets.
+/// Run in the production namespace.
+ClassMethod SetAccessToken(pAccessToken As %String, pId As %String = "WhatsApp") As %Status
 {
-	Return ##class(Ens.Config.Credentials).SetCredential(pId, "meta", pToken, 1)
+	Return ##class(Ens.Config.Credentials).SetCredential(pId, "meta", pAccessToken, 1)
 }
 
-/// Store the webhook secrets as Interoperability credentials. Run in the production namespace.
-/// pVerifyToken is any string you choose and also enter in the Meta webhook setup;
-/// pAppSecret is the App Secret from Meta (App settings, Basic).
+/// Store the webhook secrets as Interoperability credentials. Inbound only.
+/// pVerifyToken is the string you invented and also entered in Meta's webhook form;
+/// pAppSecret is the App Secret from Meta (App settings, Basic, App secret).
+/// Neither is the access token: that goes in SetAccessToken.
+/// Run in the production namespace.
 ClassMethod SetSecrets(pVerifyToken As %String, pAppSecret As %String) As %Status
 {
 	Set SC = ##class(Ens.Config.Credentials).SetCredential("WhatsAppVerify", "meta", pVerifyToken, 1)
@@ -37,7 +42,8 @@ ClassMethod OnInstall() As %Status
 	Set SC = ..CreateSSLConfig()
 	Return:($$$ISERR(SC)) SC
 	Write !, "iris-whatsapp-adapter installed in namespace ", $Namespace, ". Next steps:", !
-	Write "  1. do ##class(WhatsAppMeta.Util.Setup).SetToken(""<Meta access token>"")", !
+	Write "  1. Do ##class(WhatsAppMeta.Util.Setup).SetAccessToken(""<Meta access token>"")", !
+	Write "     (the access token starting with EA, not the App Secret)", !
 	Write "  2. System Default Setting PhoneNumberId on WhatsAppMeta.Operation.SendMessage", !
 	Write "  3. Inbound only: SetSecrets(""<verify token>"",""<App Secret>""), CreateWebApp(),", !
 	Write "     then SubscribeApp(""<WhatsApp Business Account ID>"")", !
@@ -239,7 +245,7 @@ ClassMethod GraphRequest(pMethod As %String, pPath As %String, pCredentialsId As
 	Set pResponse = ""
 	Try {
 		Set Credential = ##class(Ens.Config.Credentials).%OpenId(pCredentialsId)
-		Return:('$IsObject(Credential)) $$$ERROR($$$GeneralError, "Credentials entry '"_pCredentialsId_"' not found; run SetToken first")
+		Return:('$IsObject(Credential)) $$$ERROR($$$GeneralError, "Credentials entry '"_pCredentialsId_"' not found; run SetAccessToken first")
 		Set RequestHTTP = ##class(%Net.HttpRequest).%New()
 		Set RequestHTTP.Server = "graph.facebook.com", RequestHTTP.Https = 1, RequestHTTP.SSLConfiguration = "WhatsApp"
 		Do RequestHTTP.SetHeader("Authorization", "Bearer "_Credential.Password)
@@ -261,7 +267,12 @@ ClassMethod SendHello(pToRecipient As %String) As %Status
 	Set Request = ##class(WhatsAppMeta.Message.SendTemplateRequest).%New()
 	Set Request.ToRecipient = pToRecipient, Request.TemplateName = "hello_world"
 	Set SC = ##class(EnsLib.Testing.Service).SendTestRequest("WhatsAppMeta.Operation.SendMessage", Request, .Response, .SessionId, 1)
-	Write "session ", $Get(SessionId), " messageId ", $Select($IsObject($Get(Response)):Response.MessageId, 1:""), !
+	Write !
+	If $$$ISERR(SC) {
+		Write "Not sent: ", $System.Status.GetErrorText(SC), !
+	} Else {
+		Write "Sent. Session ", $Get(SessionId), ", message ID ", $Select($IsObject($Get(Response)): Response.MessageId, 1: ""), !
+	}
 	Return SC
 }
 

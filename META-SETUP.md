@@ -7,13 +7,13 @@ of October 2026; if yours differs, look for the same names nearby.
 
 ## What you'll end up with
 
-| Item | Where it goes in IRIS | Secret? |
-|---|---|---|
-| Access token | `SetToken(...)` | **Yes** |
-| Phone Number ID | System Default Setting `PhoneNumberId` | No |
-| WhatsApp Business Account ID | `SubscribeApp(...)` | No |
-| App Secret | `SetSecrets(..., "<App Secret>")` | **Yes** |
-| Verify token (you invent it) | `SetSecrets("<verify token>", ...)` and Meta's webhook form | **Yes** |
+| Item | Looks like | Where it goes in IRIS | Secret? |
+|---|---|---|---|
+| Access token | Long string starting with `EA` | `SetAccessToken(...)` | **Yes** |
+| Phone Number ID | Digits, ~15 long | System Default Setting `PhoneNumberId` | No |
+| WhatsApp Business Account ID | Digits, ~15 long | `SubscribeApp(...)` | No |
+| App Secret | 32 letters and digits (hex) | `SetSecrets(..., "<App Secret>")` | **Yes** |
+| Verify token (you invent it) | Whatever you chose | `SetSecrets("<verify token>", ...)` and Meta's webhook form | **Yes** |
 
 Two IDs look alike but are different: the **Phone Number ID** identifies the sending number;
 the **WhatsApp Business Account (WABA) ID** identifies the business account that owns it.
@@ -46,13 +46,19 @@ and generating a new one can invalidate the previous one. Pick one:
 | System User token | Doesn't expire | business.facebook.com → Settings → Users → **System users** → add an admin → assign your app and WhatsApp account → **Generate token** with `whatsapp_business_messaging` and `whatsapp_business_management` |
 
 For a demo, extending is enough. For anything long-running, use a System User token.
-Store it in IRIS with `SetToken` (README step 1). The API Setup page will keep saying
-"Not generated yet": that's normal, Meta never shows a token twice.
+Store it in IRIS with `SetAccessToken` (README step 1).
+
+> **Tip:** save the token in your password manager **after** extending it: the extended
+> token is a different string from the one you pasted in.
+
+The API Setup page will keep saying "Not generated yet": that's normal, Meta never shows
+a token twice.
 
 ## 4. App Secret
 
 App settings → **Basic** → **App secret** → **Show** (asks for your password).
 Store it with `SetSecrets` (README step 4). It proves each webhook call really comes from Meta.
+It isn't a token: don't store it with `SetAccessToken`.
 
 ## 5. Register the webhook
 
