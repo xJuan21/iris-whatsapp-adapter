@@ -1,31 +1,23 @@
-    zn "%SYS"
-    // Load ZPM and enable community packages
-    do $system.OBJ.Load("/tmp/zpm.xml", "ck")
+    // Docker demo setup. Runs once at image build (see Dockerfile).
+    // The IRISAPP namespace (Interoperability enabled) is created by merge.cpf.
+
+    ZN "%SYS"
+    // Install IPM and enable community packages
+    Do $System.OBJ.Load("/tmp/zpm.xml", "ck")
     zpm "enable -map -globally"
     zpm "enable -community"
 
-    // Unexpire passwords and set up passwordless mode to simplify dev use.
-    // ** Comment out these two line for Production use **
-    do ##class(Security.Users).UnExpireUserPasswords("*")
-    //zpm "install passwordless"
+    // Demo only: keep the default passwords from expiring. Never do this in production.
+    Do ##class(Security.Users).UnExpireUserPasswords("*")
 
-    // Enable callin for Embedded Python - see merge.cpf
-    //do ##class(Security.Services).Get("%Service_CallIn",.prop)
-    //set prop("Enabled")=1
-    //set prop("AutheEnabled")=48
-    //do ##class(Security.Services).Modify("%Service_CallIn",.prop)
+    ZN "IRISAPP"
 
-    // create IRISAPP namespace
-    //do $SYSTEM.OBJ.Load("/home/irisowner/dev/App.Installer.cls", "ck")
-    //set sc = ##class(App.Installer).setup()
-
-    zn "IRISAPP"
-
-    // Create /_vscode web app to support intersystems-community.testingmanager VS Code extension
+    // Lets VS Code's Testing panel run the unit tests in this namespace
     zpm "install vscode-per-namespace-settings"
+    Set ^UnitTestRoot = "/usr/irissys/.vscode/IRISAPP/UnitTestRoot"
 
-    // Configure %UnitTest in IRISAPP to suit the VS Code extension
-    set ^UnitTestRoot="/usr/irissys/.vscode/IRISAPP/UnitTestRoot"
-
+    // Install the package. Its install hook creates the outbound SSL config only;
+    // the public webhook endpoint is NOT created here: run CreateWebApp() yourself,
+    // it shows what it will change and asks first.
     zpm "load /home/irisowner/dev/ -v":1:1
-    halt
+    Halt
