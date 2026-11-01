@@ -4,7 +4,7 @@ ARG IMAGE=containers.intersystems.com/intersystems/iris:2021.1.0.215.0
 ARG IMAGE=intersystemsdc/irishealth-community
 ARG IMAGE=intersystemsdc/iris-community
 ARG IMAGE=intersystemsdc/iris-community:preview
-ARG IMAGE=intersystems/iris-community:latest-cd
+ARG IMAGE=intersystems/iris-community:latest-em
 FROM $IMAGE
 
 WORKDIR /home/irisowner/dev
@@ -38,5 +38,5 @@ RUN --mount=type=bind,src=.,dst=. \
     iris start IRIS && \
     iris merge iris ./merge.cpf && \
 	iris session IRIS < iris.script && \
-    ([ $TESTS -eq 0 ] || iris session iris -U $NAMESPACE "##class(%ZPM.PackageManager).Shell(\"test $MODULE -v -only\",1,1)") && \
+    ([ $TESTS -eq 0 ] || iris session iris -U $NAMESPACE "##class(%IPM.Main).Shell(\"test $MODULE -v -only\",1,1)") && \
     iris stop IRIS quietly
